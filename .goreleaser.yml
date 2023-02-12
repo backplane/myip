@@ -1,0 +1,42 @@
+before:
+  hooks:
+    - go mod tidy
+builds:
+  - id: cli
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+      - windows
+      - freebsd
+    goarch:
+      - amd64
+      - arm
+      - arm64
+    goarm:
+      - 7
+    ignore:
+      - goos: freebsd
+        goarch: arm64
+universal_binaries:
+  - id: cli
+    replace: true
+archives:
+  - id: cli
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - README.md
+      - LICENSE
+    replacements:
+      darwin: macOS
+checksum:
+  name_template: 'checksums.txt'
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
