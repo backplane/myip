@@ -28,7 +28,9 @@ func HandleMyIP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		log.Printf("invalid request method! method=%s\n", r.Method)
 		w.WriteHeader(http.StatusBadRequest)
-		io.WriteString(w, "Invalid request method\n")
+		if _, err := io.WriteString(w, "Invalid request method\n"); err != nil {
+			log.Printf("failed to write error response; err:%s", err)
+		}
 		return
 	}
 
