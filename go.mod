@@ -2,7 +2,7 @@ module github.com/backplane/myip
 
 go 1.22
 
-require github.com/urfave/cli/v2 v2.27.2
+require github.com/urfave/cli/v2 v2.27.4
 
 require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.4 // indirect
