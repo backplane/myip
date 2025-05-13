@@ -8,13 +8,8 @@ import (
 	"github.com/backplane/myip/clientip"
 )
 
-type HandlerConfig struct {
-	trustedProxies *clientip.TrustedProxies
-	trustXFF       bool
-}
-
 // HandleMyIP is an http endpoint that returns the IP address of the requester
-func (cfg *HandlerConfig) HandleMyIP(w http.ResponseWriter, r *http.Request) {
+func (cfg *Config) HandleMyIP(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	// Accepting HTTP GETs only

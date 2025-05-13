@@ -12,6 +12,12 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+type Config struct {
+	trustedProxies *clientip.TrustedProxies
+	trustXFF       bool
+	listenAddr     string
+}
+
 // command-line option init & defaults
 var (
 	// version, commit, date, builtBy are provided by goreleaser during build
@@ -54,24 +60,28 @@ func main() {
 		EnableShellCompletion: true,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:  "loglevel",
-				Value: "INFO",
-				Usage: "how verbosely to log, one of: DEBUG, INFO, WARN, ERROR",
+				Name:    "loglevel",
+				Value:   "INFO",
+				Usage:   "how verbosely to log, one of: DEBUG, INFO, WARN, ERROR",
+				Sources: cli.EnvVars("LOG_LEVEL"),
 			},
 			&cli.StringFlag{
-				Name:  "listenaddr",
-				Value: "0.0.0.0:8000",
-				Usage: "IP address and port to listen on",
+				Name:    "listenaddr",
+				Value:   "0.0.0.0:8000",
+				Usage:   "IP address and port to listen on",
+				Sources: cli.EnvVars("LISTEN_ADDR"),
 			},
 			&cli.BoolFlag{
-				Name:  "trustxff",
-				Value: false,
-				Usage: "trust X-Forwarded-For headers in the request (only enable if running behind a proxy)",
+				Name:    "trustxff",
+				Value:   false,
+				Usage:   "trust X-Forwarded-For headers in the request (only enable if running behind a proxy)",
+				Sources: cli.EnvVars("TRUST_XFF"),
 			},
 			&cli.StringFlag{
-				Name:  "trustedproxies",
-				Value: "",
-				Usage: "comma-separated list of IP blocks (in CIDR-notation) that upstream proxy request come from",
+				Name:    "trustedproxies",
+				Value:   "",
+				Usage:   "comma-separated list of IP blocks (in CIDR-notation) that upstream proxy request come from",
+				Sources: cli.EnvVars("TRUSTED_PROXIES"),
 			},
 		},
 		Before: func(ctx context.Context, cmd *cli.Command) (context.Context, error) {
@@ -79,6 +89,12 @@ func main() {
 			return nil, nil
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
+			cfg := &Config{
+				trustedProxies: clientip.NewTrustedProxies(cmd.String("trustedproxies")),
+				trustXFF:       cmd.Bool("trustxff"),
+				listenAddr:     cmd.String("listenaddr"),
+			}
+
 			logger.Info("starting up",
 				"version", version,
 				"commit", commit,
@@ -86,16 +102,17 @@ func main() {
 				"builder", builtBy,
 			)
 
-			cfg := &HandlerConfig{
-				trustedProxies: clientip.NewTrustedProxies(cmd.String("trustedproxies")),
-				trustXFF:       cmd.Bool("trustxff"),
-			}
+			logger.Info("configuration",
+				"listenaddr", cfg.listenAddr,
+				"trustxff", cfg.trustXFF,
+				"trustedproxies", cfg.trustedProxies,
+			)
+
 			http.HandleFunc("/", cfg.HandleMyIP)
 
 			// Serve forever
-			listenAddr := cmd.String("listenaddr")
-			logger.Info("listening for API connections", "addr", listenAddr)
-			if err := http.ListenAndServe(listenAddr, nil); err != nil {
+			logger.Info("listening for API connections")
+			if err := http.ListenAndServe(cfg.listenAddr, nil); err != nil {
 				return err
 			}
 			return nil
