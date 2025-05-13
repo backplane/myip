@@ -17,7 +17,7 @@ In addition to the CLI flags described below, the following envvars can configur
 
 This is the output of the program when it is invoked with the `-h` argument:
 
-````
+```
 NAME:
    myip - HTTP endpoint that reports the user's IP address back to the user
 
@@ -33,5 +33,5 @@ GLOBAL OPTIONS:
    --trustxff               trust X-Forwarded-For headers in the request (only enable if running behind a proxy) (default: false) [$TRUST_XFF]
    --trustedproxies string  comma-separated list of IP blocks (in CIDR-notation) that upstream proxy request come from [$TRUSTED_PROXIES]
    --help, -h               show help
-   --version, -v            print the version```
-````
+   --version, -v            print the version
+```
