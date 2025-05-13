@@ -2,12 +2,12 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"os"
 	"strings"
 
+	"github.com/backplane/myip/clientip"
 	"github.com/urfave/cli/v2"
 )
 
@@ -21,38 +21,6 @@ var (
 
 	logger *slog.Logger
 )
-
-// HandleMyIP is an http endpoint that returns the IP address of the requester
-func HandleMyIP(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
-
-	// Accepting HTTP GETs only
-	if r.Method != http.MethodGet {
-		logger.Warn("invalid request method", "method", r.Method)
-		w.WriteHeader(http.StatusBadRequest)
-		if _, err := io.WriteString(w, "Invalid request method\n"); err != nil {
-			logger.Error("failed to write error response", "error", err)
-		}
-		return
-	}
-
-	ip := r.Header.Get(`X-Forwarded-For`)
-	if ip == "" {
-		ip = r.RemoteAddr
-	} else {
-		commaIdx := strings.Index(ip, ",")
-		if commaIdx > -1 {
-			ip = ip[0:commaIdx]
-		}
-	}
-
-	logger.Info("req",
-		"remote_addr", r.RemoteAddr,
-		"forwarded_for", r.Header.Get(`X-Forwarded-For`))
-
-	w.Header().Add(`Content-Type`, `application/json`)
-	fmt.Fprintf(w, "{\"ip\": \"%s\"}\n", ip)
-}
 
 // setLogLevel sets the log level
 func setLogLevel(level string) {
@@ -93,6 +61,16 @@ func main() {
 				Value: "0.0.0.0:8000",
 				Usage: "IP address and port to listen on",
 			},
+			&cli.BoolFlag{
+				Name:  "trustxff",
+				Value: false,
+				Usage: "trust X-Forwarded-For headers in the request (only enable if running behind a proxy)",
+			},
+			&cli.StringFlag{
+				Name:  "trustedproxies",
+				Value: "",
+				Usage: "comma-separated list of IP blocks (in CIDR-notation) that upstream proxy request come from",
+			},
 		},
 		Before: func(ctx *cli.Context) error {
 			setLogLevel(ctx.String("loglevel"))
@@ -106,11 +84,14 @@ func main() {
 				"builder", builtBy,
 			)
 
-			// setup webhook listener
-			listenAddr := ctx.String("listenaddr")
-			http.HandleFunc("/", HandleMyIP)
+			cfg := &HandlerConfig{
+				trustedProxies: clientip.NewTrustedProxies(ctx.String("trustedproxies")),
+				trustXFF:       ctx.Bool("trustxff"),
+			}
+			http.HandleFunc("/", cfg.HandleMyIP)
 
 			// Serve forever
+			listenAddr := ctx.String("listenaddr")
 			logger.Info("listening for API connections", "addr", listenAddr)
 			if err := http.ListenAndServe(listenAddr, nil); err != nil {
 				return err
