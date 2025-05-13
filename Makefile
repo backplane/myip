@@ -2,9 +2,9 @@
 
 build: lint test myip
 
-myip: main.go
+myip: main.go $(wildcard ./*/*.go)
 	@echo '==> Building $@'
-	go build -o "$@" $<
+	go build -o "$@"
 
 lint: main.go
 	@echo '==> Linting'
