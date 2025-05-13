@@ -63,10 +63,8 @@ func GetClientIP(req *http.Request, trustXFF bool, trustedProxies *TrustedProxie
 		if ip := req.Header.Get(trustedHeader); ip != "" {
 			return ip
 		}
-		goto FALLBACK
-	}
-
-	if trustXFF && trustedProxies != nil {
+		// fallback below
+	} else if trustXFF && trustedProxies != nil {
 		xffs := req.Header.Values("X-Forwarded-For")
 		var ips []string
 		if len(xffs) > 0 {
@@ -89,7 +87,6 @@ func GetClientIP(req *http.Request, trustXFF bool, trustedProxies *TrustedProxie
 		// All XFF IPs are trusted, fall back to RemoteAddr
 	}
 
-FALLBACK:
 	// Fallback: extract host (IP) from RemoteAddr
 	host, _, err := net.SplitHostPort(req.RemoteAddr)
 	if err == nil && host != "" {
