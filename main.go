@@ -14,6 +14,7 @@ import (
 
 type Config struct {
 	trustedProxies *clientip.TrustedProxies
+	trustedHeader  string
 	trustXFF       bool
 	listenAddr     string
 }
@@ -71,6 +72,12 @@ func main() {
 				Usage:   "IP address and port to listen on",
 				Sources: cli.EnvVars("LISTEN_ADDR"),
 			},
+			&cli.StringFlag{
+				Name:    "trustedheader",
+				Value:   "",
+				Usage:   "the name of a trusted header which provides the client IP address directly",
+				Sources: cli.EnvVars("TRUSTED_HEADER"),
+			},
 			&cli.BoolFlag{
 				Name:    "trustxff",
 				Value:   false,
@@ -106,6 +113,7 @@ func main() {
 				"listenaddr", cfg.listenAddr,
 				"trustxff", cfg.trustXFF,
 				"trustedproxies", cfg.trustedProxies,
+				"trustedheader", cfg.trustedHeader,
 			)
 
 			http.HandleFunc("/", cfg.HandleMyIP)

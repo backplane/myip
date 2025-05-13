@@ -57,7 +57,15 @@ func (tp *TrustedProxies) IsTrusted(ip string) bool {
 //
 // This function is suitable for use in environments where your app is only reachable
 // via trusted proxies. Never set trustXFF=true if your app is internet-facing.
-func GetClientIP(req *http.Request, trustXFF bool, trustedProxies *TrustedProxies) string {
+func GetClientIP(req *http.Request, trustXFF bool, trustedProxies *TrustedProxies, trustedHeader string) string {
+
+	if trustedHeader != "" {
+		if ip := req.Header.Get(trustedHeader); ip != "" {
+			return ip
+		}
+		goto FALLBACK
+	}
+
 	if trustXFF && trustedProxies != nil {
 		xffs := req.Header.Values("X-Forwarded-For")
 		var ips []string
@@ -81,6 +89,7 @@ func GetClientIP(req *http.Request, trustXFF bool, trustedProxies *TrustedProxie
 		// All XFF IPs are trusted, fall back to RemoteAddr
 	}
 
+FALLBACK:
 	// Fallback: extract host (IP) from RemoteAddr
 	host, _, err := net.SplitHostPort(req.RemoteAddr)
 	if err == nil && host != "" {
