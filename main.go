@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -8,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/backplane/myip/clientip"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 // command-line option init & defaults
@@ -37,8 +38,8 @@ func setLogLevel(level string) {
 }
 
 func init() {
-	cli.VersionPrinter = func(c *cli.Context) {
-		fmt.Printf("myip version %s; commit %s; built on %s; by %s\n", version, commit, date, builtBy)
+	cli.VersionPrinter = func(cmd *cli.Command) {
+		fmt.Fprintf(cmd.Root().Writer, "myip version %s; commit %s; built on %s; by %s\n", version, commit, date, builtBy)
 	}
 
 }
@@ -46,10 +47,11 @@ func init() {
 func main() {
 	logger = slog.New(slog.NewTextHandler(os.Stderr, nil))
 
-	app := &cli.App{
-		Name:    "myip",
-		Version: version,
-		Usage:   "HTTP endpoint that reports the user's IP address back to the user",
+	cmd := &cli.Command{
+		Name:                  "myip",
+		Version:               version,
+		Usage:                 "HTTP endpoint that reports the user's IP address back to the user",
+		EnableShellCompletion: true,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  "loglevel",
@@ -72,11 +74,11 @@ func main() {
 				Usage: "comma-separated list of IP blocks (in CIDR-notation) that upstream proxy request come from",
 			},
 		},
-		Before: func(ctx *cli.Context) error {
-			setLogLevel(ctx.String("loglevel"))
-			return nil
+		Before: func(ctx context.Context, cmd *cli.Command) (context.Context, error) {
+			setLogLevel(cmd.String("loglevel"))
+			return nil, nil
 		},
-		Action: func(ctx *cli.Context) error {
+		Action: func(ctx context.Context, cmd *cli.Command) error {
 			logger.Info("starting up",
 				"version", version,
 				"commit", commit,
@@ -85,13 +87,13 @@ func main() {
 			)
 
 			cfg := &HandlerConfig{
-				trustedProxies: clientip.NewTrustedProxies(ctx.String("trustedproxies")),
-				trustXFF:       ctx.Bool("trustxff"),
+				trustedProxies: clientip.NewTrustedProxies(cmd.String("trustedproxies")),
+				trustXFF:       cmd.Bool("trustxff"),
 			}
 			http.HandleFunc("/", cfg.HandleMyIP)
 
 			// Serve forever
-			listenAddr := ctx.String("listenaddr")
+			listenAddr := cmd.String("listenaddr")
 			logger.Info("listening for API connections", "addr", listenAddr)
 			if err := http.ListenAndServe(listenAddr, nil); err != nil {
 				return err
@@ -100,7 +102,7 @@ func main() {
 		},
 	}
 
-	if err := app.Run(os.Args); err != nil {
+	if err := cmd.Run(context.Background(), os.Args); err != nil {
 		logger.Error("error while listening for API connections",
 			"error", err)
 		os.Exit(1)
