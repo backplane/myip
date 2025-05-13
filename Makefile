@@ -2,7 +2,7 @@
 
 build: lint test myip
 
-myip: main.go ./clientip
+myip: main.go $(wildcard ./*/*.go)
 	@echo '==> Building $@'
 	go build -o "$@"
 
