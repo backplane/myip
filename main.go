@@ -46,9 +46,11 @@ func setLogLevel(level string) {
 
 func init() {
 	cli.VersionPrinter = func(cmd *cli.Command) {
-		fmt.Fprintf(cmd.Root().Writer, "myip version %s; commit %s; built on %s; by %s\n", version, commit, date, builtBy)
+		_, err := fmt.Fprintf(cmd.Root().Writer, "myip version %s; commit %s; built on %s; by %s\n", version, commit, date, builtBy)
+		if err != nil {
+			panic("failed to write out version information")
+		}
 	}
-
 }
 
 func main() {
