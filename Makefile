@@ -12,9 +12,9 @@ lint: main.go
 	go vet
 	staticcheck
 
-# test:
-# 	@echo '==> Testing'
-# 	go test -v
+test:
+	@echo '==> Testing'
+	go test -v clientip/*.go
 
 clean:
 	@echo '==> Cleaning'
