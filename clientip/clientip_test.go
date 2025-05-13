@@ -5,15 +5,13 @@ import (
 	"testing"
 )
 
-func makeRequest(xffHeaders []string, remoteAddr string, extraHeaders *map[string]string) *http.Request {
+func makeRequest(xffHeaders []string, remoteAddr string, extraHeaders map[string]string) *http.Request {
 	req, _ := http.NewRequest("GET", "/", nil)
 	for _, h := range xffHeaders {
 		req.Header.Add("X-Forwarded-For", h)
 	}
-	if extraHeaders != nil {
-		for k, v := range *(extraHeaders) {
-			req.Header.Add(k, v)
-		}
+	for k, v := range extraHeaders {
+		req.Header.Add(k, v)
 	}
 	req.RemoteAddr = remoteAddr
 	return req
@@ -29,7 +27,7 @@ func TestGetClientIP(t *testing.T) {
 		trustXFF       bool
 		trustedProxies *TrustedProxies
 		trustedHeader  string
-		extraHeaders   *map[string]string
+		extraHeaders   map[string]string
 		want           string
 	}{
 		{
@@ -109,7 +107,7 @@ func TestGetClientIP(t *testing.T) {
 			trustXFF:       true,
 			trustedProxies: nil,
 			trustedHeader:  "X-Client-IP-For-Real",
-			extraHeaders: &map[string]string{
+			extraHeaders: map[string]string{
 				"X-Client-IP-For-Real": "4.4.4.4",
 				"X-Client-IP":          "7.6.5.4",
 			},
@@ -122,7 +120,7 @@ func TestGetClientIP(t *testing.T) {
 			trustXFF:       true,
 			trustedProxies: nil,
 			trustedHeader:  "X-Client-IP-Wrong",
-			extraHeaders: &map[string]string{
+			extraHeaders: map[string]string{
 				"X-Client-IP-For-Real": "4.4.4.4",
 				"X-Client-IP":          "7.6.5.4",
 			},
