@@ -12,6 +12,7 @@ In addition to the CLI flags described below, the following envvars can configur
 | `LISTEN_ADDR`     | `0.0.0.0:8000` | the host and port number to receive request on                                             |
 | `TRUST_XFF`       | `false`        | trust X-Forwarded-For headers in the request (only enable if running behind a proxy)       |
 | `TRUSTED_PROXIES` | ``             | comma-separated list of IP blocks (in CIDR-notation) that upstream proxy request come from |
+| `TRUSTED_HEADER`  | ``             | the name of a trusted header which provides the client IP address directly                 |
 
 ## Usage
 
@@ -30,6 +31,7 @@ VERSION:
 GLOBAL OPTIONS:
    --loglevel string        how verbosely to log, one of: DEBUG, INFO, WARN, ERROR (default: "INFO") [$LOG_LEVEL]
    --listenaddr string      IP address and port to listen on (default: "0.0.0.0:8000") [$LISTEN_ADDR]
+   --trustedheader string   the name of a trusted header which provides the client IP address directly [$TRUSTED_HEADER]
    --trustxff               trust X-Forwarded-For headers in the request (only enable if running behind a proxy) (default: false) [$TRUST_XFF]
    --trustedproxies string  comma-separated list of IP blocks (in CIDR-notation) that upstream proxy request come from [$TRUSTED_PROXIES]
    --help, -h               show help

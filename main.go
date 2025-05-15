@@ -14,6 +14,7 @@ import (
 
 type Config struct {
 	trustedProxies *clientip.TrustedProxies
+	trustedHeader  string
 	trustXFF       bool
 	listenAddr     string
 }
@@ -45,9 +46,11 @@ func setLogLevel(level string) {
 
 func init() {
 	cli.VersionPrinter = func(cmd *cli.Command) {
-		fmt.Fprintf(cmd.Root().Writer, "myip version %s; commit %s; built on %s; by %s\n", version, commit, date, builtBy)
+		_, err := fmt.Fprintf(cmd.Root().Writer, "myip version %s; commit %s; built on %s; by %s\n", version, commit, date, builtBy)
+		if err != nil {
+			panic("failed to write out version information")
+		}
 	}
-
 }
 
 func main() {
@@ -70,6 +73,12 @@ func main() {
 				Value:   "0.0.0.0:8000",
 				Usage:   "IP address and port to listen on",
 				Sources: cli.EnvVars("LISTEN_ADDR"),
+			},
+			&cli.StringFlag{
+				Name:    "trustedheader",
+				Value:   "",
+				Usage:   "the name of a trusted header which provides the client IP address directly",
+				Sources: cli.EnvVars("TRUSTED_HEADER"),
 			},
 			&cli.BoolFlag{
 				Name:    "trustxff",
@@ -106,6 +115,7 @@ func main() {
 				"listenaddr", cfg.listenAddr,
 				"trustxff", cfg.trustXFF,
 				"trustedproxies", cfg.trustedProxies,
+				"trustedheader", cfg.trustedHeader,
 			)
 
 			http.HandleFunc("/", cfg.HandleMyIP)
@@ -120,7 +130,7 @@ func main() {
 	}
 
 	if err := cmd.Run(context.Background(), os.Args); err != nil {
-		logger.Error("error while listening for API connections",
+		logger.Error("error while listening for connections",
 			"error", err)
 		os.Exit(1)
 	}

@@ -10,8 +10,6 @@ import (
 
 // HandleMyIP is an http endpoint that returns the IP address of the requester
 func (cfg *Config) HandleMyIP(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
-
 	// Accepting HTTP GETs only
 	if r.Method != http.MethodGet {
 		logger.Warn("invalid request method", "method", r.Method)
@@ -22,8 +20,11 @@ func (cfg *Config) HandleMyIP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ip := clientip.GetClientIP(r, cfg.trustXFF, cfg.trustedProxies)
+	ip := clientip.GetClientIP(r, cfg.trustXFF, cfg.trustedProxies, cfg.trustedHeader)
 
 	w.Header().Add(`Content-Type`, `application/json`)
-	fmt.Fprintf(w, "{\"ip\": \"%s\"}\n", ip)
+	_, err := fmt.Fprintf(w, "{\"ip\": \"%s\"}\n", ip)
+	if err != nil {
+		logger.Error("error writing response", "error", err)
+	}
 }
