@@ -4,7 +4,11 @@ build: lint test myip
 
 myip: main.go $(wildcard ./*/*.go)
 	@echo '==> Building $@'
-	go build -o "$@"
+	go build -o "$@" -ldflags "\
+        -X 'main.version=$$(git describe --tags --always --dirty)' \
+        -X 'main.commit=$$(git rev-parse --short HEAD)' \
+        -X 'main.date=$$(date -u +"%Y-%m-%dT%H:%M:%SZ")' \
+        -X 'main.builtBy=make on $$(hostname)'"
 
 lint: main.go
 	@echo '==> Linting'
