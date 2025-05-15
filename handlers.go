@@ -20,7 +20,7 @@ func (cfg *Config) HandleMyIP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ip := clientip.GetClientIP(r, cfg.trustXFF, cfg.trustedProxies, cfg.trustedHeader)
+	ip := clientip.GetClientIP(r, cfg.TrustXFF, cfg.TrustedProxies, cfg.TrustedHeader)
 
 	w.Header().Add(`Content-Type`, `application/json`)
 	_, err := fmt.Fprintf(w, "{\"ip\": \"%s\"}\n", ip)

@@ -14,13 +14,15 @@ type TrustedProxies struct {
 }
 
 // NewTrustedProxies parses a comma-separated list of CIDR blocks and returns a TrustedProxies struct.
-// Invalid CIDRs are skipped.
 func NewTrustedProxies(cidrList string) *TrustedProxies {
 	var nets []*net.IPNet
-	for _, cidr := range strings.Split(cidrList, ",") {
+	for cidr := range strings.SplitSeq(cidrList, ",") {
 		cidr = strings.TrimSpace(cidr)
 		if cidr == "" {
 			continue
+		}
+		if !strings.Contains(cidr, "/") {
+			cidr = cidr + "/32"
 		}
 		_, netw, err := net.ParseCIDR(cidr)
 		if err != nil {
@@ -43,6 +45,14 @@ func (tp *TrustedProxies) IsTrusted(ip string) bool {
 		}
 	}
 	return false
+}
+
+func (tp *TrustedProxies) String() string {
+	var proxies []string
+	for _, net := range tp.nets {
+		proxies = append(proxies, net.String())
+	}
+	return "[" + strings.Join(proxies, ", ") + "]"
 }
 
 // FlattenDelimitedInputs processes a slice of multiple delimited-value strings by splitting them on the delimiter,

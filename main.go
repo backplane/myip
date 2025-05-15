@@ -13,10 +13,10 @@ import (
 )
 
 type Config struct {
-	trustedProxies *clientip.TrustedProxies
-	trustedHeader  string
-	trustXFF       bool
-	listenAddr     string
+	TrustedProxies *clientip.TrustedProxies
+	TrustedHeader  string
+	TrustXFF       bool
+	ListenAddr     string
 }
 
 // command-line option init & defaults
@@ -99,9 +99,10 @@ func main() {
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			cfg := &Config{
-				trustedProxies: clientip.NewTrustedProxies(cmd.String("trustedproxies")),
-				trustXFF:       cmd.Bool("trustxff"),
-				listenAddr:     cmd.String("listenaddr"),
+				TrustedProxies: clientip.NewTrustedProxies(cmd.String("trustedproxies")),
+				TrustedHeader:  cmd.String("trustedheader"),
+				TrustXFF:       cmd.Bool("trustxff"),
+				ListenAddr:     cmd.String("listenaddr"),
 			}
 
 			logger.Info("starting up",
@@ -109,20 +110,14 @@ func main() {
 				"commit", commit,
 				"date", date,
 				"builder", builtBy,
-			)
-
-			logger.Info("configuration",
-				"listenaddr", cfg.listenAddr,
-				"trustxff", cfg.trustXFF,
-				"trustedproxies", cfg.trustedProxies,
-				"trustedheader", cfg.trustedHeader,
+				"config", cfg,
 			)
 
 			http.HandleFunc("/", cfg.HandleMyIP)
 
 			// Serve forever
 			logger.Info("listening for API connections")
-			if err := http.ListenAndServe(cfg.listenAddr, nil); err != nil {
+			if err := http.ListenAndServe(cfg.ListenAddr, nil); err != nil {
 				return err
 			}
 			return nil
