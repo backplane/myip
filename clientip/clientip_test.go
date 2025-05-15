@@ -2,6 +2,7 @@ package clientip
 
 import (
 	"net/http"
+	"reflect"
 	"testing"
 )
 
@@ -91,14 +92,14 @@ func TestGetClientIP(t *testing.T) {
 			want:           "4.4.4.4",
 		},
 		{
-			name:           "no trustedProxies, trustXFF=true (should act as trust no proxies)",
+			name:           "no trustedProxies, trustXFF=true",
 			xff:            []string{"1.1.1.1, 2.2.2.2"},
 			remote:         "3.3.3.3:1234",
 			trustXFF:       true,
 			trustedProxies: nil,
 			trustedHeader:  "",
 			extraHeaders:   nil,
-			want:           "3.3.3.3",
+			want:           "1.1.1.1",
 		},
 		{
 			name:           "trustedHeader",
@@ -134,6 +135,83 @@ func TestGetClientIP(t *testing.T) {
 			got := GetClientIP(req, tc.trustXFF, tc.trustedProxies, tc.trustedHeader)
 			if got != tc.want {
 				t.Errorf("want %q, got %q", tc.want, got)
+			}
+		})
+	}
+}
+
+func TestFlattenDelimitedInputs(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    []string
+		sep      string
+		expected []string
+	}{
+		{
+			name:     "Basic case",
+			input:    []string{"a, b, c", "d, e, f", "a, d"},
+			sep:      ",",
+			expected: []string{"a", "b", "c", "d", "e", "f"},
+		},
+		{
+			name:     "Specific Case: doc example",
+			input:    []string{"1.1.1.1", "2.2.2.2, 3.3.3.3, 4.4.4.4", "4.4.4.4, 5.5.5.5"},
+			sep:      ",",
+			expected: []string{"1.1.1.1", "2.2.2.2", "3.3.3.3", "4.4.4.4", "5.5.5.5"},
+		},
+		{
+			name:     "Empty input",
+			input:    []string{},
+			sep:      ",",
+			expected: []string{},
+		},
+		{
+			name:     "Empty separator",
+			input:    []string{"a, b, c", "d, e, f"},
+			sep:      "",
+			expected: []string{"a", ",", "b", "c", "d", "e", "f"}, // empty sep == split on every utf-8 character
+		},
+		{
+			name:     "Whitespace trimming",
+			input:    []string{" a , b , c ", " d , e , f ", " a , d "},
+			sep:      ",",
+			expected: []string{"a", "b", "c", "d", "e", "f"},
+		},
+		{
+			name:     "Empty strings and duplicates",
+			input:    []string{"a,,b,c", "a,c,,d,"},
+			sep:      ",",
+			expected: []string{"a", "b", "c", "d"},
+		},
+		{
+			name:     "No duplicates across multiple input strings",
+			input:    []string{"a,b,c", "c,b,a"},
+			sep:      ",",
+			expected: []string{"a", "b", "c"},
+		},
+		{
+			name:     "Special characters",
+			input:    []string{"a|b|c", "d|e|f", "a|d"},
+			sep:      "|",
+			expected: []string{"a", "b", "c", "d", "e", "f"},
+		},
+		{
+			name:     "Single input string",
+			input:    []string{"a, b, c"},
+			sep:      ",",
+			expected: []string{"a", "b", "c"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := FlattenDelimitedInputs(tt.input, tt.sep)
+			if len(tt.expected) == 0 {
+				if len(result) != 0 {
+					t.Errorf("expected %v, got %v", tt.expected, result)
+				}
+			} else if !reflect.DeepEqual(result, tt.expected) {
+				t.Errorf("expected %v, got %v", tt.expected, result)
 			}
 		})
 	}

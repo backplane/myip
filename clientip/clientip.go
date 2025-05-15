@@ -45,49 +45,78 @@ func (tp *TrustedProxies) IsTrusted(ip string) bool {
 	return false
 }
 
+// FlattenDelimitedInputs processes a slice of multiple delimited-value strings by splitting them on the delimiter,
+// trimming whitespace, removing empty strings, and removing duplicates while preserving the original order. An
+// empty separator results in a split between every utf-8 character. The result is a single slice of strings. For
+// example, given:
+// ["1.1.1.1, "2.2.2.2, 3.3.3.3, 4.4.4.4", "4.4.4.4, 5.5.5.5"]
+// return:
+// ["1.1.1.1", "2.2.2.2", "3.3.3.3", "4.4.4.4", "5.5.5.5"]
+func FlattenDelimitedInputs(input []string, sep string) []string {
+	seen := make(map[string]struct{})
+	var result []string
+
+	for _, delimitedStr := range input {
+		for str := range strings.SplitSeq(delimitedStr, sep) {
+			// Trim whitespace from the string
+			trimmed := strings.TrimSpace(str)
+
+			// Skip empty strings and duplicates
+			if trimmed != "" {
+				if _, exists := seen[trimmed]; !exists {
+					seen[trimmed] = struct{}{}
+					result = append(result, trimmed)
+				}
+			}
+		}
+	}
+
+	return result
+}
+
 // GetClientIP determines the real client IP address from an HTTP request,
 // following best practices for X-Forwarded-For handling.
 //
-//   - If trustXFF is false, always use the direct remote address.
-//   - If trustXFF is true, concatenate all X-Forwarded-For header values,
-//     walk from right to left, skipping over any IPs in trustedProxies, and
-//     return the first untrusted IP. If all IPs are trusted, fall back to RemoteAddr.
-//   - The remote address's host part is always extracted with net.SplitHostPort
-//     if possible.
-//
-// This function is suitable for use in environments where your app is only reachable
-// via trusted proxies. Never set trustXFF=true if your app is internet-facing.
+//   - If trustedHeader is true, we use it
+//   - If trustXFF is false, use the direct remote address.
+//   - If trustXFF is true and trustedProxies is non-empty, walk through the X-Forwarded-For
+//     header from right to left, skipping over any IPs in trustedProxies, and return the first untrusted IP.
+//   - If trustXFF is true and trustedProxies is nil or empty, return the first IP in X-Forwarded-For (from the left).
+//   - If no suitable IP is found, fall back to RemoteAddr.
+//   - The remote address's host part is extracted with net.SplitHostPort if possible.
 func GetClientIP(req *http.Request, trustXFF bool, trustedProxies *TrustedProxies, trustedHeader string) string {
 
+	// 1. Use a trustedHeader if provided
 	if trustedHeader != "" {
 		if ip := req.Header.Get(trustedHeader); ip != "" {
-			return ip
+			return strings.TrimSpace(ip)
 		}
-		// fallback below
-	} else if trustXFF && trustedProxies != nil {
-		xffs := req.Header.Values("X-Forwarded-For")
-		var ips []string
-		if len(xffs) > 0 {
-			joined := strings.Join(xffs, ",")
-			split := strings.Split(joined, ",")
-			for _, ip := range split {
-				ip = strings.TrimSpace(ip)
-				if ip != "" {
-					ips = append(ips, ip)
-				}
-			}
-			// Walk from right to left, skipping trusted proxies
-			for i := len(ips) - 1; i >= 0; i-- {
-				ip := ips[i]
-				if !trustedProxies.IsTrusted(ip) {
-					return ip
-				}
-			}
-		}
-		// All XFF IPs are trusted, fall back to RemoteAddr
 	}
 
-	// Fallback: extract host (IP) from RemoteAddr
+	// 2. Handle X-Forwarded-For if trustXFF is true
+	if trustXFF {
+		if xffs := FlattenDelimitedInputs(req.Header.Values("X-Forwarded-For"), ","); len(xffs) > 0 {
+
+			if trustedProxies != nil && len(trustedProxies.nets) > 0 {
+				// we have some trustedProxies, exclude those and choose the right-most xff ip
+				for i := len(xffs) - 1; i >= 0; i-- {
+					ip := xffs[i]
+					if trustedProxies.IsTrusted(ip) {
+						continue
+					}
+					return ip
+				}
+				// if everything is trusted we fallback to RemoteAddr
+			} else {
+				// without any trustedProxies (but with trustXFF), we choose the left-most xff ip
+				return xffs[0]
+			}
+
+		}
+		// without any xff headers, we fallback to RemoteAddr
+	}
+
+	// 3. Fallback: extract host (IP) from RemoteAddr
 	host, _, err := net.SplitHostPort(req.RemoteAddr)
 	if err == nil && host != "" {
 		return host
