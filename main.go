@@ -130,7 +130,7 @@ func main() {
 	}
 
 	if err := cmd.Run(context.Background(), os.Args); err != nil {
-		logger.Error("error while listening for API connections",
+		logger.Error("error while listening for connections",
 			"error", err)
 		os.Exit(1)
 	}
